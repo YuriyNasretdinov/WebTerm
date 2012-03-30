@@ -9,6 +9,7 @@ term-ws:
 		- Build 'ws' binary: go build -o ws
 		- Change port and password if you want in shell-ws.php
 		- You can also customize bashrc if you want
+		- Create writable (empty) "ws.log" in "term-ws/" directory, otherwise daemon will be unable to start
 	
 	Usage:
 		

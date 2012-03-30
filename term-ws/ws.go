@@ -244,7 +244,7 @@ func PtyServer(ws *websocket.Conn) {
 	setColsRows(winsz, cols, rows)
 
 	cpttyno := C.int(-1)
-    pid := int(C.goForkpty(&cpttyno, winsz))
+	pid := int(C.goForkpty(&cpttyno, winsz))
 	pttyno := int(cpttyno)
 
 	if pid == 0 {
