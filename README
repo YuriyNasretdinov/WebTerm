@@ -1,0 +1,15 @@
+term-ws:
+
+	Terminal emulator using websocket and selectel pyte library rewritten in JS
+
+	Installation:
+	
+		- Install go at http://golang.org/
+		- Install websocket pkg: go get code.google.com/p/go.net/websocket
+		- Build 'ws' binary: go build -o ws
+		- Change port and password if you want in shell-ws.php
+		- You can also customize bashrc if you want
+	
+	Usage:
+		
+		- Point your web browser to shell-ws.php and have fun! (latest Firefox/Chrome should work)
