@@ -14,6 +14,34 @@ chdir(dirname(__FILE__));
 	<title>Terminal</title>
 </head>
 <body onresize="window.resize &amp;&amp; window.scr &amp;&amp; resize(scr, ws)">
+<?php
+putenv('PATH='.getenv('PATH').':/usr/local/bin');
+if (!file_exists('ws.log')) {
+	die('You need to create <b>ws.log</b> writable for <b>'.`whoami`.'</b>');
+}
+if (!is_writable('ws.log')) {
+	die('You must have <b>ws.log</b> writable for <b>'.`whoami`.'</b>');
+}
+$path_to_term_ws = `which term-ws`;
+if (!$path_to_term_ws) {
+	$path_to_term_ws = './term-ws';
+	if (!file_exists($path_to_term_ws)) {
+		echo 'You do not have "term-ws" in $PATH = '.getenv('PATH').'<br/>';
+		echo 'You can either put binary "term-ws" in current folder or add directory with "term-ws" to system PATH<br/>';
+		die();
+	}
+
+	if (!is_executable($path_to_term_ws)) {
+		echo 'Found '.htmlspecialchars($path_to_term_ws).' as an executable for "term-ws", but it is not actually runnable.<br/>';
+		echo 'Set correct file mode to it using "chmod"<br/>';
+		die();
+	}
+}
+system('exec nohup '.escapeshellarg($path_to_term_ws).' bashrc '.$PORT.' '.md5($PASSWORD).' '.strlen($PASSWORD).' </dev/null >>ws.log 2>&1 &', $retval);
+if ($retval) {
+	die('Cannot execute term-ws daemon, see ws.log for details');
+}
+?>
 <style>
     body, table, .screen { margin: 0px; padding: 0px; background: black; }
     .outputrow {
@@ -43,12 +71,8 @@ chdir(dirname(__FILE__));
         <td width="50"><input type="button" value="paste" onclick="paste()" /></td>
     </tr>
 </table></div>
-<?php
-putenv('PATH='.getenv('PATH').':/usr/local/bin');
-system('exec nohup ./ws bashrc '.$PORT.' '.md5($PASSWORD).' '.strlen($PASSWORD).' </dev/null >>ws.log 2>&1 &');
-?>
 <script>
-	var colsrows = getWindowColsRows()
+	var colsrows = window_cols_rows()
 	var stream = new Stream();
 	var scr = new Screen(colsrows[0], colsrows[1]);
 	stream.attach(scr);
@@ -74,8 +98,7 @@ system('exec nohup ./ws bashrc '.$PORT.' '.md5($PASSWORD).' '.strlen($PASSWORD).
 	term.open()
 	
 	function send_cmd(val) {
-		val = '' + val
-	    ws.send('i' + indent(val.length, 8) + val)
+	    ws.send('i' + indent(string_utf8_len(val + ''), 8) + val)
 	}
 	
     function redraw() {

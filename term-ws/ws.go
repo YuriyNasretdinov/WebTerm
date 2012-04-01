@@ -255,7 +255,8 @@ func PtyServer(ws *websocket.Conn) {
 			bashloc = "/bin/sh"
 			bashargs = []string{"sh"}
 		}
-		syscall.Exec(bashloc, bashargs, nil)
+
+		syscall.Exec(bashloc, bashargs, os.Environ())
 		panic("unreachable code")
 	}
 
