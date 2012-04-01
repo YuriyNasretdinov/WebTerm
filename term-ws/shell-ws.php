@@ -41,6 +41,7 @@ system('exec nohup '.escapeshellarg($path_to_term_ws).' bashrc '.$PORT.' '.md5($
 if ($retval) {
 	die('Cannot execute term-ws daemon, see ws.log for details');
 }
+usleep(100000); // wait 100ms for daemon to start and begin accepting connections
 ?>
 <style>
     body, table, .screen { margin: 0px; padding: 0px; background: black; }

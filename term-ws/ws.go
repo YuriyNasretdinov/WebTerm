@@ -246,6 +246,7 @@ func PtyServer(ws *websocket.Conn) {
 	cpttyno := C.int(-1)
 	pid := int(C.goForkpty(&cpttyno, winsz))
 	pttyno := int(cpttyno)
+	defer syscall.Close(pttyno) // forgot to close on errors too
 
 	if pid == 0 {
 		bashloc, err := exec.LookPath("bash")
@@ -264,7 +265,6 @@ func PtyServer(ws *websocket.Conn) {
 	go redirFromWs(pttyno, ws, pid, winsz)
 	go redirToWs(pttyno, ws)
 	syscall.Wait4(pid, nil, 0, nil)
-	syscall.Close(pttyno)
 
 	fmt.Println("Process finished")
 }
