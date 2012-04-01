@@ -5,8 +5,8 @@ term-ws:
 	Installation:
 	
 		- Install go at http://golang.org/
-		- Install websocket pkg: go get code.google.com/p/go.net/websocket
-		- Build 'ws' binary: go build -o ws
+		- Build 'term-ws' binary:
+		    go get github.com/YuriyNasretdinov/WebTerm/term-ws
 		- Change port and password if you want in shell-ws.php
 		- You can also customize bashrc if you want
 		- Create writable (empty) "ws.log" in "term-ws/" directory, otherwise daemon will be unable to start
