@@ -208,6 +208,16 @@ var html_esc = {
 };
 
 var drawn_lines = [];
+var color_map = {
+	'black': 'black',
+	'red': '#ff0000',
+	'green': '#00ff00',
+	'brown': '#ffc709',
+	'blue': '#006fb8',
+	'magenta': '#ff00ff',
+	'cyan': '#2cb5e9',
+	'white': '#ffffff'
+}
 
 function redraw_line(screen, line) {
 	cursor = screen.cursor;
@@ -219,8 +229,9 @@ function redraw_line(screen, line) {
 		ch = chars[i];
 
 		style = '';
-		if (ch.fg != 'default') style += 'color: '+ch.fg+'; ';
-		if (ch.bg != 'default') style += 'background-color: '+ch.bg+'; ';
+		if (ch.fg != 'default') style += 'color: '+(color_map[ch.fg] || ch.fg)+'; ';
+		if (ch.bg != 'default') style += 'background-color: '+(color_map[ch.bg] || ch.bg)+'; ';
+		if (ch.fg == 'black' && (ch.bg == 'default' || ch.bg == 'black')) style += 'color: gray; '
 		if (ch.bold) style += 'font-weight: bold; ';
 		if (ch.italics) style += 'font-style: italic; ';
 		if (ch.underscore || ch.strikethrough) {

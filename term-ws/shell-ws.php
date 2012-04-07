@@ -43,14 +43,26 @@ if ($retval) {
 }
 usleep(100000); // wait 100ms for daemon to start and begin accepting connections
 ?>
+<script>
+var fontfamily = 'courier';
+if (navigator.userAgent.indexOf("Linux") >= 0) {
+	fontfamily = '"courier new"'
+}
+document.write('<style>.outputrow { font-family: ' + fontfamily + ', fixed, "courier new", monospace }</style>');
+</script>
 <style>
-    body, table, .screen { margin: 0px; padding: 0px; background: black; }
+    body, table, .screen {
+		margin: 0px;
+		padding: 0px;
+		background: black;
+	}
     .outputrow {
-        font-family: fixed, "courier new", courier, monospace;
         margin: 0px;
         line-height: 16px;
         font-size: 15px;
         color: white;
+		overflow: hidden;
+		white-space: nowrap;
     }
     span { margin:0px; padding: 0px; border: 0px; }
 </style>
