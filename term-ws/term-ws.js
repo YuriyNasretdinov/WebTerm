@@ -208,7 +208,8 @@ var html_esc = {
 };
 
 var drawn_lines = [];
-var color_map = {
+var fg_color_map = {
+	'default': 'default',
 	'black': 'black',
 	'red': '#ff0000',
 	'green': '#00ff00',
@@ -217,9 +218,32 @@ var color_map = {
 	'magenta': '#ff00ff',
 	'cyan': '#2cb5e9',
 	'white': '#ffffff'
-}
+};
+var bg_color_map = {
+	'default': 'black',
+	'black': 'black',
+	'red': '#ff0000',
+	'green': '#39b54a',
+	'brown': '#ffc709',
+	'blue': '#006fb8',
+	'magenta': '#ff00ff',
+	'cyan': '#2cb5e9',
+	'white': '#ffffff'
+};
+var default_fg_bg = {
+	'default': 'white',
+	'black': 'white',
+	'red': 'black',
+	'green': 'black',
+	'brown': 'white',
+	'blue': 'black',
+	'magenta': 'black',
+	'cyan': 'black',
+	'white': 'black'
+};
 
 function redraw_line(screen, line) {
+	var fg, bg;
 	cursor = screen.cursor;
 	var el = document.getElementById('row'+line);
 	var chars = screen[line], ch;
@@ -229,9 +253,20 @@ function redraw_line(screen, line) {
 		ch = chars[i];
 
 		style = '';
-		if (ch.fg != 'default') style += 'color: '+(color_map[ch.fg] || ch.fg)+'; ';
-		if (ch.bg != 'default') style += 'background-color: '+(color_map[ch.bg] || ch.bg)+'; ';
-		if (ch.fg == 'black' && (ch.bg == 'default' || ch.bg == 'black')) style += 'color: gray; '
+		if (ch.reverse) {
+			fg = fg_color_map[ch.bg];
+			bg = bg_color_map[ch.fg];
+			if (bg == 'default') bg = default_fg_bg[fg];
+		} else {
+			fg = fg_color_map[ch.fg];
+			bg = bg_color_map[ch.bg];
+			if (fg == 'default') fg = default_fg_bg[bg];
+		}
+		if (fg == 'black' && bg == 'black') fg = 'gray';
+
+		if (fg != 'white') style += 'color: ' + fg + '; ';
+		if (bg != 'black') style += 'background-color: ' + bg + '; ';
+
 		if (ch.bold) style += 'font-weight: bold; ';
 		if (ch.italics) style += 'font-style: italic; ';
 		if (ch.underscore || ch.strikethrough) {
