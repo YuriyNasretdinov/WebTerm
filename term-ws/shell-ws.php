@@ -51,20 +51,20 @@ if (navigator.userAgent.indexOf("Linux") >= 0) {
 document.write('<style>.outputrow { font-family: ' + fontfamily + ', fixed, "courier new", monospace }</style>');
 </script>
 <style>
-    body, table, .screen {
+	body, table, .screen {
 		margin: 0px;
 		padding: 0px;
 		background: black;
 	}
-    .outputrow {
-        margin: 0px;
-        line-height: 16px;
-        font-size: 15px;
-        color: white;
+	.outputrow {
+		margin: 0px;
+		line-height: 16px;
+		font-size: 15px;
+		color: white;
 		overflow: hidden;
 		white-space: nowrap;
-    }
-    span { margin:0px; padding: 0px; border: 0px; }
+	}
+	span { margin:0px; padding: 0px; border: 0px; }
 </style>
 <script src="pyte/js/charsets.js"></script>
 <script src="pyte/js/control.js"></script>
@@ -75,22 +75,14 @@ document.write('<style>.outputrow { font-family: ' + fontfamily + ', fixed, "cou
 <script src="pyte/js/streams.js"></script>
 <script src="term-ws.js"></script>
 <audio src="bell.ogg" id="bell" style="display: none;"></audio>
-<div id="screen">
-</div>
-<div class="copy-paste"><table cellpadding="0" cellspacing="0" width="100%">
-    <tr>
-        <td><input id="paste-buf" style="width: 100%;" onkeydown="if (event.keyCode == 13) paste();"
-                   placeholder="You can paste stuff you need here" type="password" /></td>
-        <td width="50"><input type="button" value="paste" onclick="paste()" /></td>
-    </tr>
-</table></div>
+<div id="screen"></div>
 <script>
 	var colsrows = window_cols_rows()
 	var stream = new Stream();
 	var scr = new Screen(colsrows[0], colsrows[1]);
 	stream.attach(scr);
 	
-	var ws = new WebSocket('ws://' + window.location.host + ':<?=$PORT?>/ws', "term")
+	var ws = new WebSocket('ws://' + window.location.hostname + ':<?=$PORT?>/ws', "term")
 	
 	ws.onopen = function() {
 		ws.send(<?=json_encode($PASSWORD)?>)
@@ -105,20 +97,22 @@ document.write('<style>.outputrow { font-family: ' + fontfamily + ', fixed, "cou
 		stream.feed("Connection closed\n")
 		newData = true
 		clearInterval(blinkInterv);
+		window.close();
+		window.name = "closed";
 	}
 	
 	var term = new Term(send_cmd);
 	term.open()
 	
 	function send_cmd(val) {
-	    ws.send('i' + indent(string_utf8_len(val + ''), 8) + val)
+		ws.send('i' + indent(string_utf8_len(val + ''), 8) + val)
 	}
 	
-    function redraw() {
-        for (var i = 0; i < scr.lines; i++) {
-            redraw_line(scr, i);
-        }
-    }
+	function redraw() {
+		for (var i = 0; i < scr.lines; i++) {
+			redraw_line(scr, i);
+		}
+	}
 
 	var newData = false
 	
@@ -129,6 +123,6 @@ document.write('<style>.outputrow { font-family: ' + fontfamily + ', fixed, "cou
 		}
 	}, 16)
 	
-	resize(scr, ws, true)
+	resize(scr, ws, true);
 </script>
 </body></html>

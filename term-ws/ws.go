@@ -34,20 +34,20 @@ int goChangeWinsz(int fd, struct winsize *winp) {
 import "C"
 import (
 	"bytes"
+	"code.google.com/p/go.net/websocket"
+	"crypto/md5"
 	"fmt"
 	"io"
-	"crypto/md5"
-	"os/exec"
-	"net/http"
 	"log"
+	"net/http"
 	"os"
+	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 	"unicode/utf8"
-	"code.google.com/p/go.net/websocket"
 )
 
 func readFull(r io.Reader, buf []byte) {
@@ -68,10 +68,10 @@ func readInt(r io.Reader) int {
 }
 
 func setColsRows(winsz *C.struct_winsize, cols int, rows int) {
-	winsz.ws_row = C.ushort(rows);
-	winsz.ws_col = C.ushort(cols);
-	winsz.ws_xpixel = C.ushort(cols * 9);
-	winsz.ws_ypixel = C.ushort(rows * 16);
+	winsz.ws_row = C.ushort(rows)
+	winsz.ws_col = C.ushort(cols)
+	winsz.ws_xpixel = C.ushort(cols * 9)
+	winsz.ws_ypixel = C.ushort(rows * 16)
 }
 
 func redirToWs(fd int, ws *websocket.Conn) {
@@ -81,7 +81,7 @@ func redirToWs(fd int, ws *websocket.Conn) {
 			runtime.Goexit()
 		}
 	}()
-	
+
 	var buf [8192]byte
 	start, end, buflen := 0, 0, 0
 	for {
@@ -108,7 +108,7 @@ func redirToWs(fd int, ws *websocket.Conn) {
 					break
 				}
 			}
-			
+
 			runes := bytes.Runes(buf[0:end])
 			buf_clean := []byte(string(runes))
 
@@ -139,28 +139,29 @@ func redirFromWs(fd int, ws *websocket.Conn, pid int, winsz *C.struct_winsize) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Fprintf(os.Stderr, "Error occured: %s\n", r)
+			syscall.Kill(pid, syscall.SIGHUP)
 			runtime.Goexit()
 		}
 	}()
-	
+
 	var buf [2048]byte
 	for {
 		/*
-		communication protocol:
-		
-		1 byte   cmd
-		
-		if cmd = i // input
-			8 byte        length (ascii)
-			length bytes  the actual input
-			
-		if cmd = w // window size changed
-			8 byte        cols (ascii)
-			8 byte        rows (ascii)
+			communication protocol:
+
+			1 byte   cmd
+
+			if cmd = i // input
+				8 byte        length (ascii)
+				length bytes  the actual input
+
+			if cmd = w // window size changed
+				8 byte        cols (ascii)
+				8 byte        rows (ascii)
 		*/
-		
+
 		readFull(ws, buf[0:1])
-		
+
 		switch buf[0] {
 		case 'i':
 			length := readInt(ws)
@@ -169,6 +170,7 @@ func redirFromWs(fd int, ws *websocket.Conn, pid int, winsz *C.struct_winsize) {
 				fmt.Fprintf(os.Stderr, "error reading from websocket with code %s\n", er)
 				return
 			case nr == 0: // EOF
+				fmt.Fprintf(os.Stderr, "connection closed, sending SIGHUP to %d\n")
 				syscall.Kill(pid, syscall.SIGHUP)
 				return
 			case nr > 0:
@@ -189,16 +191,16 @@ func redirFromWs(fd int, ws *websocket.Conn, pid int, winsz *C.struct_winsize) {
 }
 
 var (
-	bashrc = "bashrc"
-	port = "12345"
+	bashrc       = "bashrc"
+	port         = "12345"
 	password_md5 = ""
 	password_len = 0
-	connections = 0
-	willquit = false
+	connections  = 0
+	willquit     = false
 )
 
 func IdleQuitter() {
-	
+
 	for {
 		if connections == 0 {
 			if willquit {
@@ -210,7 +212,7 @@ func IdleQuitter() {
 		} else {
 			willquit = false
 		}
-		
+
 		time.Sleep(time.Minute)
 	}
 }
@@ -219,17 +221,17 @@ func PtyServer(ws *websocket.Conn) {
 	connections++
 	willquit = false
 	defer func() {
-	    connections--
-	    
+		connections--
+
 		if r := recover(); r != nil {
 			fmt.Fprintf(os.Stderr, "Error occured: %s\n", r)
 			runtime.Goexit()
 		}
 	}()
-	
+
 	fmt.Println("New client")
 
-    // password needs to be supplied before connection
+	// password needs to be supplied before connection
 	passbuf := make([]byte, password_len)
 	readFull(ws, passbuf)
 	h := md5.New()
@@ -274,12 +276,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage: %s <bashrc> <port> <password-md5> <password-len>\n", os.Args[0])
 		os.Exit(1)
 	}
-	
+
 	bashrc = os.Args[1]
 	port = os.Args[2]
 	password_md5 = os.Args[3]
 	password_len, _ = strconv.Atoi(os.Args[4])
-	
+
 	fmt.Println("Started")
 	go IdleQuitter()
 

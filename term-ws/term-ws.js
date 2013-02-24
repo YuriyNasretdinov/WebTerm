@@ -31,9 +31,6 @@ Term.prototype.open = function () {
 	document.addEventListener("keypress", this.keyPressHandler.bind(this), true);
 };
 Term.prototype.keyDownHandler = function (ev) {
-	var tagName = ev.target && ev.target.tagName;
-	if (tagName == 'INPUT' || tagName == 'TEXTAREA') return;
-
 	var seq;
 	seq = "";
 	switch (ev.keyCode) {
@@ -308,7 +305,7 @@ function window_cols_rows() {
 		winH = window.innerHeight;
 	}
 
-	return [Math.floor(winW / 9), Math.floor( (winH - 30) / 16)]
+	return [Math.floor(winW / 9), Math.floor( winH / 16)]
 }
 
 function resize(scr, ws, initonly) {
