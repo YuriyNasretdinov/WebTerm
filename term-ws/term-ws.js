@@ -239,12 +239,11 @@ var default_fg_bg = {
 	'white': 'black'
 };
 
-function redraw_line(screen, line) {
+function get_line_html(chars, line)
+{
 	var fg, bg;
-	cursor = screen.cursor;
-	var el = document.getElementById('row'+line);
-	var chars = screen[line], ch;
 	var res = ['<span>'];
+	var ch;
 	var prev_style = '', style, i;
 	for (i = 0; i < chars.length; i++) {
 		ch = chars[i];
@@ -284,10 +283,25 @@ function redraw_line(screen, line) {
 	}
 	res.push('</span>');
 
-	var line_html = res.join('');
+	return res.join('');
+}
 
-	if (!drawn_lines[line] || drawn_lines[line] != line_html) el.innerHTML = line_html;
-	drawn_lines[line] = line_html;
+function redraw_line(screen, drawn_line) {
+
+	var line = drawn_line + scrollOffset;
+	cursor = screen.cursor;
+	var el = document.getElementById('row' + drawn_line);
+	var chars = line >= 0 ? screen[line] : screen.history[screen.history.length + line];
+	var line_html = get_line_html(chars, line);
+
+	if (!drawn_lines[drawn_line] || drawn_lines[drawn_line] != line_html) el.innerHTML = line_html;
+	drawn_lines[drawn_line] = line_html;
+}
+
+function handle_scroll(screen, delta) {
+	scrollOffset += delta;
+	scrollOffset = Math.min(0, Math.max(-screen.history.length, scrollOffset));
+	newData = true;
 }
 
 function window_cols_rows() {
@@ -318,7 +332,7 @@ function resize(scr, ws, initonly) {
 	if (!initonly) {
 		scr.resize(colsrows[1], colsrows[0])
 		drawn_lines = []
-		newData = true
+		newData = true;
 
 		ws.send('w' + indent(colsrows[0], 8) + indent(colsrows[1], 8))	
 	}

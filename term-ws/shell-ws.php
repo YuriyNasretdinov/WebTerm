@@ -78,12 +78,24 @@ document.write('<style>.outputrow { font-family: ' + fontfamily + ', fixed, "cou
 <div id="screen"></div>
 <script>
 	var colsrows = window_cols_rows()
+	var newData = false;
+	var scrollOffset = 0;
 	var stream = new Stream();
 	var scr = new Screen(colsrows[0], colsrows[1]);
 	stream.attach(scr);
-	
+
+	document.body.addEventListener('mousewheel', function (e) {
+		var delta = e.wheelDeltaY || e.wheelDelta;
+		handle_scroll(scr, -delta);
+	});
+
+	document.body.addEventListener('MozMousePixelScroll', function (e) {
+		if (!e.VERTICAL_AXIS) return;
+		handle_scroll(scr, e.detail);
+	});
+
 	var ws = new WebSocket('ws://' + window.location.hostname + ':<?=$PORT?>/ws', "term")
-	
+
 	ws.onopen = function() {
 		ws.send(<?=json_encode($PASSWORD)?>)
 		ws.send(indent(colsrows[0], 8))
@@ -102,7 +114,7 @@ document.write('<style>.outputrow { font-family: ' + fontfamily + ', fixed, "cou
 	}
 	
 	var term = new Term(send_cmd);
-	term.open()
+	term.open();
 	
 	function send_cmd(val) {
 		ws.send('i' + indent(string_utf8_len(val + ''), 8) + val)
@@ -113,15 +125,13 @@ document.write('<style>.outputrow { font-family: ' + fontfamily + ', fixed, "cou
 			redraw_line(scr, i);
 		}
 	}
-
-	var newData = false
 	
 	setInterval(function() {
 		if (newData) {
 			redraw()
 			newData = false
 		}
-	}, 16)
+	}, 16);
 	
 	resize(scr, ws, true);
 </script>

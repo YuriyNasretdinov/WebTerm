@@ -131,6 +131,7 @@ Screen.prototype = {
         this.lines = lines;
         this.length = lines;
         this.columns = columns;
+        this.history = [];
         this.reset();
     },
     __toString: function() {
@@ -337,6 +338,10 @@ Screen.prototype = {
         var top = this.margins.top, bottom = this.margins.bottom;
 
         if (this.cursor.y == bottom) {
+            if (top == 0 && bottom == this.lines - 1) {
+                var row = this[0];
+                this.history.push(row);
+            }
             this.pop(top);
             this.insert(bottom, repeat(this.columns, this.default_char));
         } else {
