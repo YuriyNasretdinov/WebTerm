@@ -37,7 +37,15 @@ if (!$path_to_term_ws) {
 		die();
 	}
 }
-system('exec nohup '.escapeshellarg($path_to_term_ws).' bashrc '.$PORT.' '.md5($PASSWORD).' '.strlen($PASSWORD).' </dev/null >>ws.log 2>&1 &', $retval);
+if (!is_executable('pt')) {
+	exec($cmd = "gcc -lutil -D\$(uname | tr '[a-z]' '[A-Z]') -o pt pt.c 2>&1", $out, $retval);
+	if ($retval) {
+		echo "<pre>Could not compile 'pt' utility using the following command:\n\n    " . htmlspecialchars($cmd) . "\n\n";
+		die(htmlspecialchars(implode("\n", $out)) . "</pre>");
+	}
+}
+
+system('exec nohup '.escapeshellarg($path_to_term_ws).' bashrc '.$PORT.' '.md5($PASSWORD).' '.strlen($PASSWORD).' ./pt </dev/null >>ws.log 2>&1 &', $retval);
 if ($retval) {
 	die('Cannot execute term-ws daemon, see ws.log for details');
 }

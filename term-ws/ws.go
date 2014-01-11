@@ -1,37 +1,5 @@
 package main
 
-/*
-#cgo linux CFLAGS: -D__LINUX__
-#cgo darwin CFLAGS: -D__DARWIN__
-#cgo freebsd CFLAGS: -D__FREEBSD__
-#cgo LDFLAGS: -lutil
-
-#include <stdlib.h>
-#include <sys/ioctl.h>
-
-#ifdef __LINUX__
-#include <pty.h>
-#endif
-
-#ifdef __DARWIN__
-#include <util.h>
-#endif
-
-#ifdef __FREEBSD__
-#include <sys/types.h>
-#include <termios.h>
-#include <libutil.h>
-#endif
-
-int goForkpty(int *amaster, struct winsize *winp) {
-	return forkpty(amaster, NULL, NULL, winp);
-}
-
-int goChangeWinsz(int fd, struct winsize *winp) {
-	return ioctl(fd, TIOCSWINSZ, winp);
-}
-*/
-import "C"
 import (
 	"bytes"
 	"code.google.com/p/go.net/websocket"
@@ -48,6 +16,16 @@ import (
 	"syscall"
 	"time"
 	"unicode/utf8"
+)
+
+var (
+	bashrc       = "bashrc"
+	port         = "12345"
+	password_md5 = ""
+	password_len = 0
+	connections  = 0
+	willquit     = false
+	ptPath       = "./pt"
 )
 
 func readFull(r io.Reader, buf []byte) {
@@ -67,14 +45,7 @@ func readInt(r io.Reader) int {
 	return result
 }
 
-func setColsRows(winsz *C.struct_winsize, cols int, rows int) {
-	winsz.ws_row = C.ushort(rows)
-	winsz.ws_col = C.ushort(cols)
-	winsz.ws_xpixel = C.ushort(cols * 9)
-	winsz.ws_ypixel = C.ushort(rows * 16)
-}
-
-func redirToWs(fd int, ws *websocket.Conn) {
+func redirToWs(stdoutPipe io.Reader, ws *websocket.Conn) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Fprintf(os.Stderr, "Error occured: %s\n", r)
@@ -85,9 +56,9 @@ func redirToWs(fd int, ws *websocket.Conn) {
 	var buf [8192]byte
 	start, end, buflen := 0, 0, 0
 	for {
-		switch nr, er := syscall.Read(fd, buf[start:]); {
+		switch nr, err := stdoutPipe.Read(buf[start:]); {
 		case nr < 0:
-			fmt.Fprintf(os.Stderr, "error reading from websocket %d with code %d\n", fd, er)
+			fmt.Fprintf(os.Stderr, "error reading from stdoutPipe: %s\n", err.Error())
 			return
 		case nr == 0: // EOF
 			return
@@ -135,7 +106,7 @@ func redirToWs(fd int, ws *websocket.Conn) {
 	}
 }
 
-func redirFromWs(fd int, ws *websocket.Conn, pid int, winsz *C.struct_winsize) {
+func redirFromWs(stdinPipe io.Writer, ws *websocket.Conn, pid int) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Fprintf(os.Stderr, "Error occured: %s\n", r)
@@ -174,30 +145,22 @@ func redirFromWs(fd int, ws *websocket.Conn, pid int, winsz *C.struct_winsize) {
 				syscall.Kill(pid, syscall.SIGHUP)
 				return
 			case nr > 0:
-				nw, ew := syscall.Write(fd, buf[0:nr])
-				if nw != nr {
-					fmt.Fprintf(os.Stderr, "error writing to fd = %d with code %d\n", fd, ew)
+				_, err := stdinPipe.Write(buf[0:nr])
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error writing to stdinPipe: %s\n", err.Error())
 					return
 				}
 			}
 		case 'w':
-			cols, rows := readInt(ws), readInt(ws)
-			setColsRows(winsz, cols, rows)
-			C.goChangeWinsz(C.int(fd), winsz)
+			// sadly, we can no longer change window size as easily :(
+			// cols, rows := readInt(ws), readInt(ws)
+			// setColsRows(winsz, cols, rows)
+			// C.goChangeWinsz(C.int(fd), winsz)
 		default:
 			panic("Unknown command " + string(buf[0]))
 		}
 	}
 }
-
-var (
-	bashrc       = "bashrc"
-	port         = "12345"
-	password_md5 = ""
-	password_len = 0
-	connections  = 0
-	willquit     = false
-)
 
 func IdleQuitter() {
 
@@ -242,38 +205,49 @@ func PtyServer(ws *websocket.Conn) {
 	// reading rows and cols
 	cols, rows := readInt(ws), readInt(ws)
 
-	var winsz = new(C.struct_winsize)
-	setColsRows(winsz, cols, rows)
+	args := []string{fmt.Sprint(rows), fmt.Sprint(cols)}
 
-	cpttyno := C.int(-1)
-	pid := int(C.goForkpty(&cpttyno, winsz))
-	pttyno := int(cpttyno)
-	defer syscall.Close(pttyno) // forgot to close on errors too
-
-	if pid == 0 {
-		bashloc, err := exec.LookPath("bash")
-		bashargs := []string{"bash", "--rcfile", bashrc}
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not find bash: %s\n", err)
-			bashloc = "/bin/sh"
-			bashargs = []string{"sh"}
-		}
-
-		syscall.Exec(bashloc, bashargs, os.Environ())
-		panic("unreachable code")
+	_, err := exec.LookPath("bash")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not find bash: %s\n", err)
+		args = append(args, "sh")
+	} else {
+		args = append(args, "bash", "--rcfile", bashrc)
 	}
 
-	fmt.Println("Pid is", pid, " ptty number is", pttyno)
-	go redirFromWs(pttyno, ws, pid, winsz)
-	go redirToWs(pttyno, ws)
-	syscall.Wait4(pid, nil, 0, nil)
+	cmd := exec.Command(ptPath, args...)
+	inPipe, err := cmd.StdinPipe()
+	if err != nil {
+		panic("Cannot create stdin pipe")
+	}
+	outPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		panic("Cannot create stdout pipe")
+	}
+	cmd.Stderr = os.Stdout
+
+	err = cmd.Start()
+	if err != nil {
+		panic("Could not start process: " + err.Error())
+	}
+
+	pid := cmd.Process.Pid
+	fmt.Println("Pid is", pid)
+
+	go redirFromWs(inPipe, ws, pid)
+	go redirToWs(outPipe, ws)
+
+	err = cmd.Wait()
+	if err != nil {
+		fmt.Println("Process finished with error: " + err.Error())
+	}
 
 	fmt.Println("Process finished")
 }
 
 func main() {
-	if len(os.Args) != 5 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <bashrc> <port> <password-md5> <password-len>\n", os.Args[0])
+	if len(os.Args) != 6 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <bashrc> <port> <password-md5> <password-len> <pt-path>\n", os.Args[0])
 		os.Exit(1)
 	}
 
@@ -281,10 +255,11 @@ func main() {
 	port = os.Args[2]
 	password_md5 = os.Args[3]
 	password_len, _ = strconv.Atoi(os.Args[4])
+	ptPath = os.Args[5]
 
 	fmt.Println("Started")
 	go IdleQuitter()
 
 	http.Handle("/ws", websocket.Handler(PtyServer))
-	log.Fatal(http.ListenAndServe(":" + port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

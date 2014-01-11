@@ -15,4 +15,6 @@ term-ws:
 	Usage:
 		
 		- Point your web browser to shell-ws.php and have fun!
-		  (latest Firefox/Chrome should work)
+		  (any browser with websocket support should work)
+		- If you have problems, you probably would need to compile
+		  "pt" utility as well. See build instructions in pt.c header

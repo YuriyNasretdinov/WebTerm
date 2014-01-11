@@ -1,4 +1,5 @@
 .DS_Store
 .idea
-term-ws/ws.log
-term-ws/term-ws
+ws.log
+term-ws
+pt
