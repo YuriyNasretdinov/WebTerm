@@ -30,6 +30,10 @@ Term.prototype.open = function () {
 	document.addEventListener("keydown", this.keyDownHandler.bind(this), true);
 	document.addEventListener("keypress", this.keyPressHandler.bind(this), true);
 };
+Term.prototype.stopEvent = function (ev) {
+	if (ev.stopPropagation) ev.stopPropagation();
+	if (ev.preventDefault) ev.preventDefault();
+};
 Term.prototype.keyDownHandler = function (ev) {
 	var seq;
 	seq = "";
@@ -121,16 +125,11 @@ Term.prototype.keyDownHandler = function (ev) {
 				} else if (ev.keyCode == 32) {
 					seq = String.fromCharCode(0);
 				}
-			} else if ((!this.is_mac && ev.altKey) || (this.is_mac && ev.metaKey)) {
-				if (ev.keyCode >= 65 && ev.keyCode <= 90) {
-					seq = "\x1b" + String.fromCharCode(ev.keyCode + 32);
-				}
 			}
 			break;
 	}
 	if (seq) {
-		if (ev.stopPropagation) ev.stopPropagation();
-		if (ev.preventDefault) ev.preventDefault();
+		this.stopEvent(ev);
 		this.key_rep_state = 1;
 		this.key_rep_str = seq;
 		this.handler(seq);
@@ -143,20 +142,17 @@ Term.prototype.keyDownHandler = function (ev) {
 Term.prototype.keyPressHandler = function (ev) {
 	var tagName = ev.target && ev.target.tagName;
 	if (tagName == 'INPUT' || tagName == 'TEXTAREA') return;
-
 	var seq, code;
-	if (ev.stopPropagation) ev.stopPropagation();
-	if (ev.preventDefault) ev.preventDefault();
 	seq = "";
 	if (!("charCode" in ev)) {
 		code = ev.keyCode;
 		if (this.key_rep_state == 1) {
 			this.key_rep_state = 2;
-			return false;
 		} else if (this.key_rep_state == 2) {
 			this.handler(this.key_rep_str);
-			return false;
 		}
+		this.stopEvent(ev);
+		return false;
 	} else {
 		code = ev.charCode;
 	}
@@ -165,8 +161,10 @@ Term.prototype.keyPressHandler = function (ev) {
 			seq = String.fromCharCode(code);
 		}
 	}
+
 	if (seq) {
 		this.handler(seq);
+		this.stopEvent(ev);
 		return false;
 	} else {
 		return true;
